@@ -1,5 +1,5 @@
 CC := cc
-CFLAGS := -Iinclude --std=c89 -Wall -Werror
+CFLAGS := -Iinclude --std=c89 -Wall -Werror -Wpedantic
 LDFLAGS := -lpthread
 
 .PHONY: all clean

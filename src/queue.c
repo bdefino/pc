@@ -103,10 +103,8 @@ enqueue(struct queue *queue, void *value)
 		retval = -ENOMEM;
 		goto bubble;
 	}
-	*node = (struct qnode) {
-		.next = NULL,
-		.value = value
-	};
+	node->next = NULL;
+	node->value = value;
 
 	/* enqueue */
 
@@ -197,13 +195,11 @@ queue_init(struct queue *dest, ssize_t capacity, int synchronized)
 		retval = -EFAULT;
 		goto bubble;
 	}
-	*dest = (struct queue) {
-		.capacity = capacity,
-		.head = NULL,
-		.size = 0,
-		.synchronized = synchronized,
-		.tail = NULL
-	};
+	dest->capacity = capacity;
+	dest->head = NULL;
+	dest->size = 0;
+	dest->synchronized = synchronized;
+	dest->tail = NULL;
 
 	if (synchronized) {
 		/* initialize mutex */

@@ -109,12 +109,10 @@ pc_init(struct pc *dest, ssize_t capacity, int ephemeral, ssize_t maxslaves)
 	if (dest == NULL) {
 		return -EFAULT;
 	}
-	*dest = (struct pc) {
-		.alive = ~0,
-		.ephemeral = ephemeral,
-		.maxslaves = maxslaves,
-		.slaves = 0
-	};
+	dest->alive = ~0;
+	dest->ephemeral = ephemeral;
+	dest->maxslaves = maxslaves;
+	dest->slaves = 0;
 	return queue_init(&dest->queue, capacity, ~0);
 }
 
@@ -177,11 +175,9 @@ produce(struct pc *pc, int (*consume)(struct pctask *), void *data,
 		retval = -ENOMEM;
 		goto bubble;
 	}
-	*task = (struct pctask) {
-		.consume = consume,
-		.data = data,
-		.dfini = dfini
-	};
+	task->consume = consume;
+	task->data = data;
+	task->dfini = dfini;
 
 	/* synchronize */
 

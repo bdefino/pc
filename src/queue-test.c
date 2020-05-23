@@ -22,9 +22,10 @@ enqueuer(struct queue *queue)
 	for (i = 0; i < 100; i++) {
 		retval = enqueue(queue, queue);
 		printf("enqueue(%p = &(struct queue){.capacity = %ld, .head ="
-			" %p, .size = %ld, .tail = %p}, %p) -> %d\n", &queue,
-			queue->capacity, queue->head, queue->size, queue->tail,
-			&queue, retval);
+			" %p, .size = %ld, .tail = %p}, %p) -> %d\n",
+			(void *) &queue, queue->capacity, (void *) queue->head,
+			queue->size, (void *) queue->tail, (void *) &queue,
+			retval);
 	}
 }
 
@@ -38,8 +39,8 @@ main(int argc, char **argv)
 	pthread_t	thread;
 
 	retval = queue_init(&queue, -1, ~0);
-	printf("queue_init(%p, %ld, %d) -> %d\n", &queue, (ssize_t) -1, ~0,
-		retval);
+	printf("queue_init(%p, %ld, %d) -> %d\n", (void *) &queue,
+		(ssize_t) -1, ~0, retval);
 	
 	if (retval) {
 		return retval;
@@ -55,11 +56,13 @@ main(int argc, char **argv)
 		retval = dequeue(&queue, &out);
 		printf("dequeue(%p = &(struct queue){.capacity = %ld, .head ="
 			" %p, .size = %ld, .tail = %p}, %p) -> %d (*%p ="
-			" %p)\n", &queue, queue.capacity, queue.head,
-			queue.size, queue.tail, &out, retval, &out, out);
+			" %p)\n", (void *) &queue, queue.capacity,
+			(void *) queue.head, queue.size, (void *) queue.tail,
+			(void *) &out, retval, (void *) &out, (void *) out);
 	}
 	retval = queue_fini(&queue, &callback);
-	printf("queue_fini(%p, %p) -> %d\n", &queue, &callback, retval);
+	printf("queue_fini(%p, %lx) -> %d\n", (void *) &queue,
+		(size_t)  &callback, retval);
 	return retval;
 }
 
