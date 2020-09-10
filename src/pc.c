@@ -3,33 +3,33 @@
 /* thread-slaving producer/consumer model */
 
 static int
-pctask_vfini(struct pctask *task);
+consumertask_vfini(struct consumertask *task);
 
 /* consumption slave */
 static int
-consumer(struct pc *pc)
+consumer(struct consumer *consumer)
 {
-	struct pctask	*task;
+	struct consumertask	*task;
 	int		retval;
 
 	retval = 0;
 
-	if (pc == NULL) {
+	if (consumer == NULL) {
 		retval = -EFAULT;
 		goto bubble;
 	}
 
 	/* greedily consume */
 
-	while (pc->alive) {
+	while (consumer->alive) {
 		/* dequeue */
 
-		retval = dequeue(&pc->queue, (void **) &task);
+		retval = dequeue(&consumer->queue, (void **) &task);
 
 		if (retval == ENOENT) {
 			retval = 0;	/* doesn't signify failure */
 
-			if (pc->ephemeral) {
+			if (consumer->ephemeral) {
 				break;
 			}
 			continue;
@@ -42,51 +42,51 @@ consumer(struct pc *pc)
 		}
 
 		if (task->consume == NULL) {
-			pctask_vfini(task);	/* won't fail */
+			consumertask_vfini(task);	/* won't fail */
 			continue;
 		}
 
 		/* consume */
 
 		if (!(*task->consume)(task)) {
-			pctask_vfini(task);	/* won't fail */
+			consumertask_vfini(task);	/* won't fail */
 			continue;
 		}
 
 		/* requeue */
 
-		retval = enqueue(&pc->queue, task);
+		retval = enqueue(&consumer->queue, task);
 
 		if (retval) {
-			pctask_vfini(task);	/* won't fail */
+			consumertask_vfini(task);	/* won't fail */
 		}
 	}
 bubble:
 	/* decrement slave count */
 
-	if (pc == NULL) {
+	if (consumer == NULL) {
 		return retval;
 	}
 
-	if (!pc->maxslaves) {
+	if (!consumer->maxslaves) {
 		return retval;
 	}
 
-	if (!pc->queue.synchronized) {
-		pc->slaves--;
+	if (!consumer->queue.synchronized) {
+		consumer->slaves--;
 		return retval;
 	}
 
 	/* synchronize */
 
-	if (pthread_mutex_lock(&pc->queue.mutex)) {
+	if (pthread_mutex_lock(&consumer->queue.mutex)) {
 		return retval ? retval : -errno;
 	}
-	pc->slaves--;
+	consumer->slaves--;
 
 	/* synchronize */
 
-	if (pthread_mutex_unlock(&pc->queue.mutex)
+	if (pthread_mutex_unlock(&consumer->queue.mutex)
 			&& !retval) {
 		retval = -errno;
 	}
@@ -94,17 +94,19 @@ bubble:
 }
 
 int
-pc_fini(struct pc *pc)
+consumer_fini(struct consumer *consumer)
 {
-	if (pc == NULL) {
+	if (consumer == NULL) {
 		return -EFAULT;
 	}
-	pc_kill(pc);	/* won't fail */
-	return queue_fini(&pc->queue, (void (*)(void *)) &pctask_vfini);
+	consumer_kill(consumer);	/* won't fail */
+	return queue_fini(&consumer->queue,
+		(void (*)(void *)) &consumertask_vfini);
 }
 
 int
-pc_init(struct pc *dest, ssize_t capacity, int ephemeral, ssize_t maxslaves)
+consumer_init(struct consumer *dest, ssize_t capacity, int ephemeral,
+	ssize_t maxslaves)
 {
 	if (dest == NULL) {
 		return -EFAULT;
@@ -117,17 +119,17 @@ pc_init(struct pc *dest, ssize_t capacity, int ephemeral, ssize_t maxslaves)
 }
 
 int
-pc_kill(struct pc *pc)
+consumer_kill(struct consumer *consumer)
 {
-	if (pc == NULL) {
+	if (consumer == NULL) {
 		return -EFAULT;
 	}
-	pc->alive = 0;
+	consumer->alive = 0;
 	return 0;
 }
 
 static int
-pctask_vfini(struct pctask *task)
+consumertask_vfini(struct consumertask *task)
 {
 	if (task == NULL) {
 		return -EFAULT;
@@ -145,31 +147,31 @@ static void	*
 pthread_consumer_compat(void *arg);
 
 int
-produce(struct pc *pc, int (*consume)(struct pctask *), void *data,
-		void (*dfini)(void *))
+produce(struct consumer *consumer, int (*consume)(struct consumertask *),
+	void *data, void (*dfini)(void *))
 {
 	int		locked;
 	int		retval;
-	struct pctask	*task;
+	struct consumertask	*task;
 	pthread_t	thread;
 
 	locked = 0;
 	retval = 0;
 	task = NULL;
 
-	if (pc == NULL) {
+	if (consumer == NULL) {
 		retval = -EFAULT;
 		goto bubble;
 	}
 
-	if (!pc->queue.synchronized) {
+	if (!consumer->queue.synchronized) {
 		retval = -EINVAL;
 		goto bubble;
 	}
 
 	/* allocate */
 
-	task = (struct pctask *) calloc(1, sizeof(struct pctask));
+	task = (struct consumertask *) calloc(1, sizeof(struct consumertask));
 
 	if (task == NULL) {
 		retval = -ENOMEM;
@@ -181,8 +183,8 @@ produce(struct pc *pc, int (*consume)(struct pctask *), void *data,
 
 	/* synchronize */
 
-	if (pc->queue.synchronized) {
-		if (pthread_mutex_lock(&pc->queue.mutex)) {
+	if (consumer->queue.synchronized) {
+		if (pthread_mutex_lock(&consumer->queue.mutex)) {
 			retval = -errno;
 			goto bubble;
 		}
@@ -191,7 +193,7 @@ produce(struct pc *pc, int (*consume)(struct pctask *), void *data,
 
 	/* enqueue */
 
-	retval = enqueue(&pc->queue, task);
+	retval = enqueue(&consumer->queue, task);
 
 	if (retval) {
 		goto bubble;
@@ -199,19 +201,19 @@ produce(struct pc *pc, int (*consume)(struct pctask *), void *data,
 
 	/* spin up a slave (as needed) */
 
-	if (!pc->maxslaves) {
+	if (!consumer->maxslaves) {
 		/* single-threaded */
 
-		retval = consumer(pc);
+		retval = consumer(consumer);
 		goto bubble;
-	} else if (pc->maxslaves > 0
-			&& pc->maxslaves <= pc->slaves) {
+	} else if (consumer->maxslaves > 0
+			&& consumer->maxslaves <= consumer->slaves) {
 		/* at capacity */
 
 		goto bubble;
 	}
 
-	if (pthread_create(&thread, NULL, &pthread_consumer_compat, pc)) {
+	if (pthread_create(&thread, NULL, &pthread_consumer_compat, consumer)) {
 		retval = -errno;
 		goto bubble;
 	}
@@ -221,7 +223,7 @@ produce(struct pc *pc, int (*consume)(struct pctask *), void *data,
 		pthread_join(thread, NULL);	/* ignore failure */
 		goto bubble;
 	}
-	pc->slaves++;
+	consumer->slaves++;
 bubble:
 	if (retval
 			&& task != NULL) {
@@ -231,7 +233,7 @@ bubble:
 	/* synchronize */
 
 	if (locked
-			&& pthread_mutex_unlock(&pc->queue.mutex)
+			&& pthread_mutex_unlock(&consumer->queue.mutex)
 			&& !retval) {
 		retval = -errno;
 	}
@@ -241,7 +243,7 @@ bubble:
 static void	*
 pthread_consumer_compat(void *arg)
 {
-	consumer((struct pc *) arg);
+	consumer((struct consumer *) arg);
 	return NULL;
 }
 

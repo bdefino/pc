@@ -1,6 +1,6 @@
 # `pc` - a threaded producer/consumer model
 Getting the maximum oomph out of your server's often difficult: not only does
-design complexity accelerate, but implementations suffer.  Enter `pc`.
+design complexity accelerate, but implementations suffer.  Enter `consumer`.
 
 ## Goal
 This library aims to ease the pain of parallel task consumption, by providing
@@ -28,7 +28,7 @@ Here's an example usage (without error checking):
 ...
 
 int
-print_pthread_self(struct pctask *current_task)
+print_pthread_self(struct consumertask *current_task)
 {
 	printf("[thread %zu] print_pthread_self(%p)\n", pthread_self(),
 		current_task);
@@ -38,15 +38,15 @@ print_pthread_self(struct pctask *current_task)
 ...
 
 int i;
-struct pc pc;
+struct consumer consumer;
 
-pc_init(&pc, -1, ~0, 4);		/* up to 4 ephemeral slaves */
+consumer_init(&consumer, -1, ~0, 4);		/* up to 4 ephemeral slaves */
 
 for (i = 0; i < 100; i++) {
-	produce(&pc, &print_pthread_self, "some data",
+	produce(&consumer, &print_pthread_self, "some data",
 		(void (*)(void *) &print_pthread_self);
 }
-pc_fini(&pc);
+consumer_fini(&consumer);
 ```
 
 And that's pretty much it.

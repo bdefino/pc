@@ -8,7 +8,7 @@
 #include "pc.h"
 
 static int
-consume(struct pctask *task)
+consume(struct consumertask *task)
 {
 	printf("[thread %lx] consume(%p)\n", (size_t) pthread_self(),
 		(void *) task);
@@ -26,12 +26,12 @@ int
 main(int argc, char **argv)
 {
 	unsigned int	i;
-	struct pc	pc;
+	struct consumer	consumer;
 	int		retval;
 
-	retval = pc_init(&pc, -1, ~0, 2);
-	printf("[thread %lx] pc_init(%p, %ld, %d, %lx) -> %d\n",
-		(size_t) pthread_self(), (void *) &pc, (ssize_t) -1, ~0,
+	retval = consumer_init(&consumer, -1, ~0, 2);
+	printf("[thread %lx] consumer_init(%p, %ld, %d, %lx) -> %d\n",
+		(size_t) pthread_self(), (void *) &consumer, (ssize_t) -1, ~0,
 		(ssize_t) 2, retval);
 
 	if (retval) {
@@ -39,15 +39,15 @@ main(int argc, char **argv)
 	}
 
 	for (i = 0; i < 100; i++) {
-		retval = produce(&pc, &consume, &pc, &dfini);
+		retval = produce(&consumer, &consume, &consumer, &dfini);
 		printf("[thread %lx] produce(%p, %lx, %p, %lx) -> %d\n",
-			(size_t) pthread_self(), (void *) &pc,
-			(size_t) &consume, (void *) &pc, (size_t) &dfini,
+			(size_t) pthread_self(), (void *) &consumer,
+			(size_t) &consume, (void *) &consumer, (size_t) &dfini,
 			retval);
 	}
-	retval = pc_fini(&pc);
-	printf("[thread %lx] pc_fini(%p) -> %d\n", (size_t) pthread_self(),
-		(void *) &pc, retval);
+	retval = consumer_fini(&consumer);
+	printf("[thread %lx] consumer_fini(%p) -> %d\n", (size_t) pthread_self(),
+		(void *) &consumer, retval);
 	return retval;
 }
 

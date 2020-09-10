@@ -10,8 +10,8 @@
 
 /* thread-slaving producer/consumer model */
 
-/* producer/consumer state */
-struct pc {
+/* consumer state */
+struct consumer {
 	sig_atomic_t	alive;
 	int		ephemeral;	/*
 					whether slaves exist only when there
@@ -23,27 +23,28 @@ struct pc {
 };
 
 /* task abstraction */
-struct pctask {
+struct consumertask {
 	/* consume the task, and return whether to re-consume the task */
-	int	(*consume)(struct pctask *task);
+	int	(*consume)(struct consumertask *task);
 	void	*data;
 	void	(*dfini)(void *data);
 };
 
 int
-pc_fini(struct pc *pc);
+consumer_fini(struct consumer *consumer);
 
 int
-pc_init(struct pc *dest, ssize_t capacity, int ephemeral, ssize_t maxslaves);
+consumer_init(struct consumer *dest, ssize_t capacity, int ephemeral,
+	ssize_t maxslaves);
 
 /* signal slave threads to exit gracefully */
 int
-pc_kill(struct pc *pc);
+consumer_kill(struct consumer *consumer);
 
 /* produce a task for eventual consumption */
 int
-produce(struct pc *pc, int (*consume)(struct pctask *), void *data,
-	void (*dfini)(void *));
+produce(struct consumer *consumer, int (*consume)(struct consumertask *),
+	void *data, void (*dfini)(void *));
 
 #endif
 

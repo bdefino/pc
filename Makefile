@@ -4,13 +4,13 @@ LDFLAGS := -lpthread
 
 .PHONY: all clean
 
-all: clean bin/queue-test bin/pc-test
+all: clean bin/queue-test bin/consumer-test
 
 bin:
 	mkdir -p bin
 
-bin/pc-test: bin build/pc.o build/pc-test.o build/queue.o
-	$(CC) $(LDFLAGS) -o $@ build/pc*.o build/queue.o
+bin/consumer-test: bin build/consumer.o build/consumer-test.o build/queue.o
+	$(CC) $(LDFLAGS) -o $@ build/consumer*.o build/queue.o
 
 bin/queue-test: bin build/queue.o build/queue-test.o
 	$(CC) $(LDFLAGS) -o $@ build/queue*.o
@@ -18,11 +18,11 @@ bin/queue-test: bin build/queue.o build/queue-test.o
 build:
 	mkdir -p build
 
-build/pc.o: build include/queue.h include/pc.h src/pc.c
-	$(CC) $(CFLAGS) -c -o $@ src/pc.c
+build/consumer.o: build include/queue.h include/pc.h src/consumer.c
+	$(CC) $(CFLAGS) -c -o $@ src/consumer.c
 
-build/pc-test.o: build include/pc.h src/pc-test.c
-	$(CC) $(CFLAGS) -c -o $@ src/pc-test.c
+build/consumer-test.o: build include/pc.h src/consumer-test.c
+	$(CC) $(CFLAGS) -c -o $@ src/consumer-test.c
 
 build/queue.o: build include/queue.h src/queue.c
 	$(CC) $(CFLAGS) -c -o $@ src/queue.c
